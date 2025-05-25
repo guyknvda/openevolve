@@ -20,7 +20,7 @@ BASE_IMAGE=nvcr.io/nvidia/pytorch:25.01-py3
 mkdir -p ${DIR}/.cursor-server
 
 LINK=$(realpath --relative-to="/home/${MY_UNAME}" "$DIR" -s)
-IMAGE=alphaevolve_12_8:latest
+IMAGE=openevolve_12_8:latest
 if [ -z "$(docker images -q ${IMAGE})" ]; then
     # Create dev.dockerfile
     FILE=dev.dockerfile
@@ -32,9 +32,9 @@ if [ -z "$(docker images -q ${IMAGE})" ]; then
     echo "  RUN apt-get update" >> $FILE
     echo "  RUN apt-get -y install nano gdb time" >> $FILE
     echo "  RUN apt-get -y install nvidia-cuda-gdb" >> $FILE
+    echo "  RUN apt-get -y install sudo" >> $FILE
     # echo "  RUN apt-get -y install build-essential libgl1-mesa-dev libglu1-mesa-dev freeglut3-dev libfreeimage-dev && rm -rf /var/lib/apt/lists/*" >> $FILE
 
-    echo "  RUN apt-get -y install sudo" >> $FILE
     echo "  RUN (groupadd -g $MY_GID $MY_UNAME || true) && useradd --uid $MY_UID -g $MY_GID --no-log-init --create-home $MY_UNAME && (echo \"${MY_UNAME}:password\" | chpasswd) && (echo \"${MY_UNAME} ALL=(ALL) NOPASSWD: ALL\" >> /etc/sudoers)" >> $FILE
 
     echo "  RUN mkdir -p $DIR" >> $FILE
@@ -43,23 +43,23 @@ if [ -z "$(docker images -q ${IMAGE})" ]; then
     echo "  RUN echo \"fs.inotify.max_user_watches=524288\" >> /etc/sysctl.conf" >> $FILE
     echo "  RUN sysctl -p" >> $FILE
 
-    echo "  WORKDIR /usr/local/cuda" >> $FILE
-    echo "  RUN git clone --branch v12.8 --depth 1 https://github.com/NVIDIA/cuda-samples.git" >> $FILE
-    echo "  RUN chown -R ${MY_UNAME}:${MY_GID} /usr/local/cuda/cuda-samples" >> $FILE
+    # echo "  WORKDIR /usr/local/cuda" >> $FILE
+    # echo "  RUN git clone --branch v12.8 --depth 1 https://github.com/NVIDIA/cuda-samples.git" >> $FILE
+    # echo "  RUN chown -R ${MY_UNAME}:${MY_GID} /usr/local/cuda/cuda-samples" >> $FILE
     # echo "  WORKDIR ${CUDA_HOME}/cuda-samples" >> $FILE
     # echo "  RUN make TARGET_ARCH=x86_64 SMS='89'" >> $FILE
 
-    # echo "  RUN pip install -e git+https://github.com/NVIDIA/NeMo-Skills.git#egg=nemo_skills" >> $FILE
     echo "  USER $MY_UNAME" >> $FILE
     echo "  COPY docker.bashrc /home/${MY_UNAME}/.bashrc" >> $FILE 
     
    # START: install any additional package required for your image here
-    echo "  COPY requirements.txt /home/${MY_UNAME}/requirements.txt" >> $FILE
-    echo "  RUN pip install -r /home/${MY_UNAME}/requirements.txt" >> $FILE
+    # echo "  COPY requirements.txt /home/${MY_UNAME}/requirements.txt" >> $FILE
+    # echo "  RUN pip install -r /home/${MY_UNAME}/requirements.txt" >> $FILE
     echo "  RUN pip install transformers accelerate bitsandbytes peft datasets dotenv openai huggingface_hub[hf_xet]" >> $FILE
     # END: install any additional package required for your image here
     echo "  RUN . /home/${MY_UNAME}/.bashrc" >> $FILE
     echo "  WORKDIR $DIR/.." >> $FILE
+    # echo "  RUN pip install -e $DIR/.." >> $FILE
     echo "  CMD /bin/bash" >> $FILE
 
     docker buildx build -f dev.dockerfile -t ${IMAGE} .
@@ -79,7 +79,10 @@ MOUNT_CODE_FOLDER="--mount type=bind,source=${CODE_FOLDER},target=${CODE_FOLDER}
 DATA_FOLDER=/home/${MY_UNAME}/data
 MOUNT_DATA_FOLDER=" --mount type=bind,source=${DATA_FOLDER},target=${DATA_FOLDER}"
 
-MODEL_NAME=qwen3:32b
+# Ensure the llmnet network exists
+docker network inspect llmnet >/dev/null 2>&1 || docker network create llmnet
+
+MODEL_NAME=qwen3:8b
 docker run -d --rm --gpus all --name ollama --network llmnet -p 11434:11434 ollama/ollama
 
 # Wait until Ollama API is ready
