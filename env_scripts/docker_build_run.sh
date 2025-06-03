@@ -1,4 +1,8 @@
 #!/bin/bash
+# Usage: ./docker_build_run_lws.sh [WITH_OLLAMA=true]
+# If WITH_OLLAMA=true, the script will setup Ollama and use the llmnet network.
+# If WITH_OLLAMA=false (default) the script will use the default network.
+
 # DIR is the directory where the script is saved (should be <project_root/scripts)
 DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
 cd $DIR
@@ -79,24 +83,40 @@ MOUNT_CODE_FOLDER="--mount type=bind,source=${CODE_FOLDER},target=${CODE_FOLDER}
 DATA_FOLDER=/home/${MY_UNAME}/data
 MOUNT_DATA_FOLDER=" --mount type=bind,source=${DATA_FOLDER},target=${DATA_FOLDER}"
 
-# Ensure the llmnet network exists
-docker network inspect llmnet >/dev/null 2>&1 || docker network create llmnet
+# Parse WITH_OLLAMA argument (default: true)
+WITH_OLLAMA=false
+if [[ "$1" == "WITH_OLLAMA="* ]]; then
+    WITH_OLLAMA="${1#WITH_OLLAMA=}"
+    shift
+fi
 
-MODEL_NAME=qwen3:8b
-docker run -d --rm --gpus all --name ollama --network llmnet -p 11434:11434 ollama/ollama
+# Only run Ollama setup if WITH_OLLAMA is true
+if [[ "$WITH_OLLAMA" == "true" || "$WITH_OLLAMA" == "True" ]]; then
+    # Ensure the llmnet network exists
+    docker network inspect llmnet >/dev/null 2>&1 || docker network create llmnet
 
-# Wait until Ollama API is ready
-until curl -s http://localhost:11434 | grep -q 'Ollama'; do
-    echo "Waiting for Ollama to be ready..."
-    sleep 1
-done
+    MODEL_NAME=qwen3:8b
+    docker run -d --rm --gpus all --name ollama --network llmnet -p 11434:11434 ollama/ollama
 
-docker exec -it ollama ollama pull ${MODEL_NAME}
+    # Wait until Ollama API is ready
+    until curl -s http://localhost:11434 | grep -q 'Ollama'; do
+        echo "Waiting for Ollama to be ready..."
+        sleep 1
+    done
+
+    docker exec -it ollama ollama pull ${MODEL_NAME}
+fi
+
+# If WITH_OLLAMA is true, use --network llmnet, else use default network
+NETWORK_ARG=""
+if [[ "$WITH_OLLAMA" == "true" || "$WITH_OLLAMA" == "True" ]]; then
+    NETWORK_ARG="--network llmnet"
+fi
 
 docker run \
     --gpus \"device=all\" \
     --privileged \
-    --network llmnet \
+    $NETWORK_ARG \
     --ipc=host --ulimit memlock=-1 --ulimit stack=67108864 -it --rm \
     --mount type=bind,source=${DIR}/..,target=${DIR}/.. \
     ${MOUNT_CODE_FOLDER} \
