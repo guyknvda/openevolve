@@ -23,8 +23,10 @@ class LLMConfig:
     secondary_model_weight: float = 0.2
 
     # API configuration
-    api_base: str = "https://api.openai.com/v1"
+    # api_base: str = "https://api.openai.com/v1"
+    api_base: str = None
     api_key: Optional[str] = None
+    api_version: Optional[str] = None
 
     # Generation parameters
     temperature: float = 0.7

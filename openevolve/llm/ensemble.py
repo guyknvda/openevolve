@@ -9,7 +9,7 @@ from typing import Dict, List, Optional, Tuple
 
 from openevolve.config import LLMConfig
 from openevolve.llm.base import LLMInterface
-from openevolve.llm.openai import OpenAILLM
+from openevolve.llm.openai import OpenAILLM, AzureOpenAILLM
 
 logger = logging.getLogger(__name__)
 
@@ -21,8 +21,12 @@ class LLMEnsemble:
         self.config = config
 
         # Initialize primary and secondary models
-        self.primary_model = OpenAILLM(config, model=config.primary_model)
-        self.secondary_model = OpenAILLM(config, model=config.secondary_model)
+        # self.primary_model = OpenAILLM(config, model=config.primary_model)
+        # self.secondary_model = OpenAILLM(config, model=config.secondary_model)
+
+
+        self.primary_model = AzureOpenAILLM(config, model=config.primary_model)
+        self.secondary_model = AzureOpenAILLM(config, model=config.secondary_model)
 
         # Model weights for sampling
         self._weights = [
