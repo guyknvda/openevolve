@@ -1,13 +1,27 @@
 import requests
 import os 
 from dotenv import load_dotenv
-from .api import oai
+
+# Robust import that works in different contexts
+try:
+    from .api import oai
+except ImportError:
+    # Fallback for when running as standalone module
+    try:
+        from api import oai
+    except ImportError:
+        # Last resort - add current directory to path
+        import sys
+        from pathlib import Path
+        current_dir = Path(__file__).parent
+        sys.path.insert(0, str(current_dir))
+        from api import oai
 
 load_dotenv('.env')
 
 # the below code was borrowed from https://gitlab-master.nvidia.com/atlas/endpoints.git
 
-MODEL_NAME_TO_ID={'claude':'claude-3-5-sonnet-20240620','gpt-4o':'gpt-4o-20240806','gpt-4o-mini':'gpt-4o-mini-20240718','gpt-4-turbo':'gpt-4-turbo-20240409','o1-preview':'o1-preview-20240912','o1-mini':'o1-mini-20240912','o1':'o1-20241217',
+MODEL_NAME_TO_ID={'clds35':'claude-3-5-sonnet-20241022','clds37':'claude-3-7-sonnet-20250219','clds4':'claude-sonnet-4-20250514','cldo4':'claude-opus-4-20250514','gpt-4o':'gpt-4o-20241120','gpt-4o-mini':'gpt-4o-mini-20240718','gpt-4-turbo':'gpt-4-turbo-20240409','o1-preview':'o1-preview-20240912','o1-mini':'o1-mini-20240912','o1':'o1-20241217',
                    'o3mini':'o3-mini-20250131','llama3.3':'nvdev/meta/llama-3.3-70b-instruct','dsr1':'nvdev/deepseek-ai/deepseek-r1'}
 API_VERSION='2024-12-01-preview'
 
